@@ -1,0 +1,37 @@
+---
+title: "Prediction Assignment Writeup"
+author: "V. Bucha"
+date: "February 10, 2016"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#Data read and cleaning
+Raw training data have feilds with values equal to "", "NA" and  "#DIV/0!". Let us fix the issue by converting those values to NA while do data loading. 100 columns have more than 90% of NAs. We will exclude such columns from building the model. We also detected  and filtered out variables that are near zero variance predictiors. Finnaly, we removed variables(user_name, timestamps, etc) which do not have predictive power.
+
+```{r Data Loading, cache=TRUE}
+suppressMessages(library(caret))
+training_raw<-read.table("pml-training.csv",sep=",",header=TRUE,na.strings =c("","NA","#DIV/0!") )
+testing_raw<-read.table("pml-testing.csv",sep=",",header=TRUE,na.strings =c("","NA","#DIV/0!"))
+
+DataClean<-function(df){
+        #compute NAs percent for each column and select clulums with NAs<90%
+        mask<-sapply(df,function(x) {ifelse(sum(is.na(x))/ length(x)>0.9,FALSE,TRUE)})
+        training<-df[,mask]
+
+        nzv <- nearZeroVar(training,saveMetrics = TRUE)
+        training<-training[,!nzv$nzv]
+        #remove first 6 attributes since they do not have predictive power
+        training<-training[,-c(1:5)]
+}
+training<-DataClean(training_raw)
+testing<-DataClean(testing_raw)
+```
+
+
+```{r, echo=FALSE}
+plot(cars)
+```
