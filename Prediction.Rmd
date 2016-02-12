@@ -43,7 +43,7 @@ testing<-DataClean(testing_raw)
 ```
 
 #Model training
-Next, training dataset were splited into a 70% training and 30% probing. Parallel random forest method were used to train the model. The error of the model is estimated with a 30% of probing dataset. In order to speed up training step doParallel were set up. It allows to utilize more than one CPUs for calculations. Since we end up with more than acceptable performance of random forest, we do not test more models. We used default parameters of random forest method. By default bootstrapped resampling is used. 
+Next, training dataset were splited into a 70% training and 30% probing. Parallel random forest method were used to train the model. The error of the model is estimated with a 30% of probing dataset. In order to speed up training step doParallel were set up. It allows to utilize more than one CPUs for calculations. Since we end up with more than acceptable performance of random forest, we do not test more models. 
 
 ``` {R Model training,cache=TRUE}
 set.seed(123)
@@ -58,7 +58,7 @@ registerDoParallel()
 
 #fit random forest model
 #modelFit <- train(classe ~ ., data = dfTrain,  method="parRF", tuneGrid=data.frame(mtry=5), trControl=trainControl(method="none"))
-modelFit <- train(classe ~ ., data = dfTrain,  method="parRF", tuneGrid=data.frame(mtry=5))
+modelFit <- train(classe ~ ., data = dfTrain,  method="parRF", tuneGrid=data.frame(mtry=5),trControl=trainControl(method='cv'))
 ```
 
 #Final model
