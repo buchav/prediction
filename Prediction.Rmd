@@ -1,13 +1,22 @@
 ---
 title: "Prediction Assignment Writeup"
 author: "V. Bucha"
-date: "February 10, 2016"
+date: "February 12, 2016"
 output: html_document
 ---
+#Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#Data
+The training data for this project are available here:
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
 
 #Data read and cleaning
 Raw training data have feilds with values equal to "", "NA" and  "#DIV/0!". Let us fix the issue by converting those values to NA while do data loading. 100 columns have more than 90% of NAs. We will exclude such columns from building the model. We also detected  and filtered out variables that are near zero variance predictiors. Finnaly, we removed variables(user_name, timestamps, etc) which do not have predictive power.
@@ -24,14 +33,61 @@ DataClean<-function(df){
 
         nzv <- nearZeroVar(training,saveMetrics = TRUE)
         training<-training[,!nzv$nzv]
-        #remove first 6 attributes since they do not have predictive power
-        training<-training[,-c(1:5)]
+        #remove first 5 attributes since they do not have predictive power
+        training<-training[,-c(1:6)]
 }
+
+#apply data cleaning to training and testing data
 training<-DataClean(training_raw)
 testing<-DataClean(testing_raw)
 ```
 
+#Model training
+Next, training dataset were splited into a 70% training and 30% probing. Parallel random forest method were used to train the model. The error of the model is estimated with a 30% of probing dataset. In order to speed up training step doParallel were set up. It allows to utilize more than one CPUs for calculations. Since we end up with more than acceptable performance of random forest, we do not test more models. We used default parameters of random forest method. By default bootstrapped resampling is used. 
 
-```{r, echo=FALSE}
-plot(cars)
+``` {R Model training,cache=TRUE}
+set.seed(123)
+inTrain <- createDataPartition(training$classe, p=0.7,list = FALSE)
+dfTrain<-training[inTrain,]
+dfProbe<-training[-inTrain,]
+#load libraries for parallel training utilizing several CPU cores
+suppressMessages(library(doParallel))
+
+#register doParallel 
+registerDoParallel()
+
+#fit random forest model
+#modelFit <- train(classe ~ ., data = dfTrain,  method="parRF", tuneGrid=data.frame(mtry=5), trControl=trainControl(method="none"))
+modelFit <- train(classe ~ ., data = dfTrain,  method="parRF", tuneGrid=data.frame(mtry=5))
+```
+
+#Final model
+Random forests can evaluate the attributes importance and their impact on classification.  We showed only top 20 the most important variables.
+
+``` {r Variable importance}
+modelFit
+modelFit$finalModel
+plot(varImp(modelFit),top=20)
+```
+
+#Evaluate the model on training data
+This model get 100% accuracy on training data. Out of sample error will be checked on probing 30% data.
+```{r Evaluate training}
+modelFit
+hat <- predict(modelFit, dfTrain)
+confusionMatrix(hat, dfTrain$classe)
+```
+
+#Evaluate the model on test data
+This model is accurate as we can see in the consusion matrix. Accuracy: ~99 is a very accurate estimate.
+```{r Evaluate testing}
+hat <- predict(modelFit, dfProbe)
+confusionMatrix(hat, dfProbe$classe)
+```
+
+#Predict on the assignment test data 
+Finally, we apply the model to the 20 unlabeled assignment cases.
+```{r Evaluate testing assigment}
+hat <- predict(modelFit, testing)
+hat
 ```
